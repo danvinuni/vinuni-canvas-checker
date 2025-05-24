@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- UPDATED: May 24, 2025 - Version 0.4 - Enhanced UI, reorganized missing grades, added next steps, improved instructions -->
+<!-- UPDATED: May 24, 2025 - Version 0.5 - Version checker and updater -->
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -500,6 +500,123 @@
         .export-steps li {
             margin-bottom: 8px;
         }
+
+        .update-checker {
+            text-align: center;
+            margin: 20px 0;
+            padding: 15px;
+            background-color: var(--card-bg);
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+
+        .update-check-btn {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background-color 0.3s;
+        }
+
+        .update-check-btn:hover {
+            background-color: #2a3759;
+        }
+
+        .update-check-btn:disabled {
+            background-color: var(--border-color);
+            cursor: not-allowed;
+        }
+
+        .update-available, .update-current, .update-ahead, .update-error {
+            margin-top: 15px;
+            padding: 15px;
+            border-radius: 6px;
+            text-align: left;
+        }
+
+        .update-available {
+            background-color: #e8f5e8;
+            border: 1px solid #4caf50;
+        }
+
+        .update-current {
+            background-color: #e3f2fd;
+            border: 1px solid #2196f3;
+        }
+
+        .update-ahead {
+            background-color: #fff3e0;
+            border: 1px solid #ff9800;
+        }
+
+        .update-error {
+            background-color: #ffebee;
+            border: 1px solid #f44336;
+        }
+
+        [data-theme="dark"] .update-available {
+            background-color: #1b5e20;
+            border-color: #4caf50;
+            color: #e8f5e8;
+        }
+
+        [data-theme="dark"] .update-current {
+            background-color: #0d47a1;
+            border-color: #2196f3;
+            color: #e3f2fd;
+        }
+
+        [data-theme="dark"] .update-ahead {
+            background-color: #e65100;
+            border-color: #ff9800;
+            color: #fff3e0;
+        }
+
+        [data-theme="dark"] .update-error {
+            background-color: #b71c1c;
+            border-color: #f44336;
+            color: #ffebee;
+        }
+
+        .update-available h4, .update-current h4, .update-ahead h4, .update-error h4 {
+            margin-top: 0;
+            margin-bottom: 10px;
+        }
+
+        .download-link {
+            display: inline-block;
+            background-color: #4caf50;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 4px;
+            text-decoration: none;
+            font-weight: 600;
+            margin-top: 10px;
+            transition: background-color 0.3s;
+        }
+
+        .download-link:hover {
+            background-color: #388e3c;
+            color: white;
+        }
+
+        .release-notes {
+            margin-top: 10px;
+            padding: 10px;
+            background-color: rgba(0,0,0,0.05);
+            border-radius: 4px;
+            font-size: 12px;
+            white-space: pre-wrap;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        [data-theme="dark"] .release-notes {
+            background-color: rgba(255,255,255,0.1);
+        }
     </style>
 </head>
 <body>
@@ -572,6 +689,13 @@
 
         <div id="nextSteps" style="display: none;"></div>
 
+        <div class="update-checker">
+            <button id="updateCheckButton" class="update-check-btn" onclick="checkForUpdates()" data-i18n="check-updates-button">
+                Check for Updates
+            </button>
+            <div id="updateCheckResult"></div>
+        </div>
+
         <div class="footer">
             VinUniversity - Center for Educational Excellence<br>
             Created by Daniel Ruelle. Version 0.4 - May 24, 2025<br>
@@ -584,6 +708,10 @@
         let fileName = '';
         let currentLanguage = 'en';
         let lastAnalysisResults = null;
+
+        // Version information for update checker
+        const CURRENT_VERSION = '0.5';
+        const GITHUB_API_URL = 'https://api.github.com/repos/danvinuni/vinuni-canvas-checker/releases/latest';
 
         // Translation data
         const translations = {
@@ -703,7 +831,19 @@
                 'next-steps-missing-grades-summary': 'Missing Grades: Enter actual scores for submitted work, enter "0" for non-submissions, or "EX" to excuse students from specific assignments.',
                 'next-steps-letter-grades-summary': 'Letter Grade Issues: Enable your course grading scheme in Canvas Settings and verify all students have letter grades assigned.',
                 'next-steps-unposted-grades-summary': 'Unposted Grades: Post grades to students by clicking the three dots in assignment headers → "Post Grades" → "Everyone".',
-                'next-steps-assignment-config-summary': 'Assignment Configuration: Review and fix missing or problematic point values for assignments in your Canvas course.'
+                'next-steps-assignment-config-summary': 'Assignment Configuration: Review and fix missing or problematic point values for assignments in your Canvas course.',
+                'check-updates-button': 'Check for Updates',
+                'update-available-title': '🚀 Update Available!',
+                'update-current-title': '✅ You\'re Up to Date!',
+                'update-ahead-title': '🔬 Development Version',
+                'update-error-title': '❌ Check Failed',
+                'current-version': 'Current version:',
+                'latest-version': 'Latest version:',
+                'latest-stable': 'Latest stable:',
+                'download-version': 'Download v{version}',
+                'running-newer': 'You\'re running a newer version!',
+                'check-failed-message': 'Unable to check for updates. Please visit the releases page manually.',
+                'releases-page': 'releases page'
             },
             vi: {
                 'title': 'VinUniversity Công Cụ Kiểm Tra Bảng Điểm Canvas',
@@ -822,7 +962,19 @@
                 'next-steps-missing-grades-summary': 'Điểm Thiếu: Nhập điểm thực tế cho bài đã nộp, nhập "0" cho bài không nộp, hoặc "EX" để miễn sinh viên khỏi bài tập cụ thể.',
                 'next-steps-letter-grades-summary': 'Vấn Đề Điểm Chữ: Kích hoạt hệ thống chấm điểm khóa học trong Canvas Settings và xác minh tất cả sinh viên đều có điểm chữ được gán.',
                 'next-steps-unposted-grades-summary': 'Điểm Chưa Đăng: Đăng điểm cho sinh viên bằng cách nhấp ba chấm trong tiêu đề bài tập → "Post Grades" → "Everyone".',
-                'next-steps-assignment-config-summary': 'Cấu Hình Bài Tập: Xem lại và khắc phục giá trị điểm bị thiếu hoặc có vấn đề cho các bài tập trong khóa học Canvas của bạn.'
+                'next-steps-assignment-config-summary': 'Cấu Hình Bài Tập: Xem lại và khắc phục giá trị điểm bị thiếu hoặc có vấn đề cho các bài tập trong khóa học Canvas của bạn.',
+                'check-updates-button': 'Kiểm Tra Cập Nhật',
+                'update-available-title': '🚀 Có Bản Cập Nhật!',
+                'update-current-title': '✅ Bạn Đã Cập Nhật!',
+                'update-ahead-title': '🔬 Phiên Bản Phát Triển',
+                'update-error-title': '❌ Kiểm Tra Thất Bại',
+                'current-version': 'Phiên bản hiện tại:',
+                'latest-version': 'Phiên bản mới nhất:',
+                'latest-stable': 'Phiên bản ổn định mới nhất:',
+                'download-version': 'Tải về v{version}',
+                'running-newer': 'Bạn đang chạy phiên bản mới hơn!',
+                'check-failed-message': 'Không thể kiểm tra cập nhật. Vui lòng truy cập trang phát hành thủ công.',
+                'releases-page': 'trang phát hành'
             }
         };
 
@@ -1476,6 +1628,83 @@
                     <div class="result-description">${message}</div>
                 </div>
             `;
+        }
+
+        // Update checker functions
+        async function checkForUpdates() {
+            const checkButton = document.getElementById('updateCheckButton');
+            const resultDiv = document.getElementById('updateCheckResult');
+            
+            // Show loading state
+            checkButton.disabled = true;
+            checkButton.textContent = 'Checking...';
+            resultDiv.innerHTML = '';
+            
+            try {
+                const response = await fetch(GITHUB_API_URL);
+                const data = await response.json();
+                
+                const latestVersion = data.tag_name.replace('v', ''); // Remove 'v' prefix if present
+                const comparison = compareVersions(latestVersion, CURRENT_VERSION);
+                
+                if (comparison > 0) {
+                    // New version available
+                    const downloadVersionText = translations[currentLanguage]['download-version'].replace('{version}', latestVersion);
+                    resultDiv.innerHTML = `
+                        <div class="update-available">
+                            <h4>${translations[currentLanguage]['update-available-title']}</h4>
+                            <p><strong>${translations[currentLanguage]['current-version']}</strong> v${CURRENT_VERSION}</p>
+                            <p><strong>${translations[currentLanguage]['latest-version']}</strong> v${latestVersion}</p>
+                            <p><a href="${data.html_url}" target="_blank" class="download-link">${downloadVersionText}</a></p>
+                            ${data.body ? `<details><summary>Release Notes</summary><div class="release-notes">${data.body}</div></details>` : ''}
+                        </div>
+                    `;
+                } else if (comparison === 0) {
+                    // Same version
+                    resultDiv.innerHTML = `
+                        <div class="update-current">
+                            <h4>${translations[currentLanguage]['update-current-title']}</h4>
+                            <p><strong>${translations[currentLanguage]['current-version']}</strong> v${CURRENT_VERSION} (latest)</p>
+                        </div>
+                    `;
+                } else {
+                    // User has newer version (dev/beta)
+                    resultDiv.innerHTML = `
+                        <div class="update-ahead">
+                            <h4>${translations[currentLanguage]['update-ahead-title']}</h4>
+                            <p><strong>${translations[currentLanguage]['current-version']}</strong> v${CURRENT_VERSION}</p>
+                            <p><strong>${translations[currentLanguage]['latest-stable']}</strong> v${latestVersion}</p>
+                            <p>${translations[currentLanguage]['running-newer']}</p>
+                        </div>
+                    `;
+                }
+                
+            } catch (error) {
+                console.error('Update check failed:', error);
+                resultDiv.innerHTML = `
+                    <div class="update-error">
+                        <h4>${translations[currentLanguage]['update-error-title']}</h4>
+                        <p>${translations[currentLanguage]['check-failed-message']} <a href="https://github.com/danvinuni/vinuni-canvas-checker/releases" target="_blank">${translations[currentLanguage]['releases-page']}</a>.</p>
+                    </div>
+                `;
+            } finally {
+                checkButton.disabled = false;
+                checkButton.textContent = translations[currentLanguage]['check-updates-button'];
+            }
+        }
+
+        function compareVersions(a, b) {
+            const aParts = a.split('.').map(Number);
+            const bParts = b.split('.').map(Number);
+            
+            for (let i = 0; i < Math.max(aParts.length, bParts.length); i++) {
+                const aPart = aParts[i] || 0;
+                const bPart = bParts[i] || 0;
+                
+                if (aPart > bPart) return 1;
+                if (aPart < bPart) return -1;
+            }
+            return 0;
         }
     </script>
 </body>
