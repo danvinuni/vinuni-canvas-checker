@@ -1,0 +1,1482 @@
+<!DOCTYPE html>
+<!-- UPDATED: May 24, 2025 - Version 0.4 - Enhanced UI, reorganized missing grades, added next steps, improved instructions -->
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VinUniversity Canvas Gradebook Checker</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <style>
+        :root {
+            --bg-color: #ffffff;
+            --text-color: #333333;
+            --card-bg: #f8f9fa;
+            --border-color: #dee2e6;
+            --success-color: #28a745;
+            --warning-color: #ffc107;
+            --danger-color: #C72026;
+            --primary-color: #35426E;
+            --secondary-color: #C72026;
+            --info-color: #fff3cd;
+            --info-border: #ffeaa7;
+        }
+
+        [data-theme="dark"] {
+            --bg-color: #1a1a1a;
+            --text-color: #e0e0e0;
+            --card-bg: #2d2d2d;
+            --border-color: #404040;
+            --success-color: #4caf50;
+            --warning-color: #ff9800;
+            --danger-color: #C72026;
+            --primary-color: #35426E;
+            --secondary-color: #C72026;
+            --info-color: #3d3d3d;
+            --info-border: #ffeaa7;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            line-height: 1.6;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+
+        .header-controls {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .language-toggle {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .lang-flag {
+            cursor: pointer;
+            font-size: 24px;
+            padding: 5px;
+            border-radius: 4px;
+            transition: background-color 0.3s;
+        }
+
+        .lang-flag.active {
+            background-color: var(--primary-color);
+        }
+
+        .lang-flag:hover {
+            background-color: rgba(53, 66, 110, 0.1);
+        }
+
+        h1 {
+            color: var(--primary-color);
+            font-size: 2.5rem;
+            font-weight: 700;
+        }
+
+        .theme-toggle {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .toggle-switch {
+            position: relative;
+            width: 60px;
+            height: 30px;
+            background-color: var(--border-color);
+            border-radius: 15px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .toggle-switch.active {
+            background-color: var(--primary-color);
+        }
+
+        .toggle-slider {
+            position: absolute;
+            top: 3px;
+            left: 3px;
+            width: 24px;
+            height: 24px;
+            background-color: white;
+            border-radius: 50%;
+            transition: transform 0.3s;
+        }
+
+        .toggle-switch.active .toggle-slider {
+            transform: translateX(30px);
+        }
+
+        .info-section {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 30px;
+        }
+
+        .info-section h2 {
+            color: var(--primary-color);
+            margin-bottom: 15px;
+        }
+
+        .info-list {
+            list-style-type: disc;
+            margin-left: 20px;
+        }
+
+        .info-list li {
+            margin-bottom: 8px;
+        }
+
+        .upload-section {
+            background-color: var(--card-bg);
+            border: 2px dashed var(--border-color);
+            border-radius: 8px;
+            padding: 40px;
+            text-align: center;
+            margin-bottom: 30px;
+            transition: border-color 0.3s;
+        }
+
+        .upload-section:hover {
+            border-color: var(--primary-color);
+        }
+
+        .upload-section.dragover {
+            border-color: var(--primary-color);
+            background-color: rgba(53, 66, 110, 0.1);
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .upload-button {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px;
+            transition: background-color 0.3s;
+        }
+
+        .upload-button:hover {
+            background-color: #2a3759;
+        }
+
+        .check-button {
+            background-color: var(--success-color);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 18px;
+            font-weight: 600;
+            margin-top: 20px;
+            transition: background-color 0.3s;
+        }
+
+        .check-button:hover {
+            background-color: #1e6b1e;
+        }
+
+        .check-button:disabled {
+            background-color: var(--border-color);
+            cursor: not-allowed;
+        }
+
+        .results-section {
+            margin-top: 30px;
+        }
+
+        .result-item {
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 15px;
+            border-left: 5px solid;
+        }
+
+        .result-item.success {
+            border-left-color: var(--success-color);
+            background-color: rgba(40, 167, 69, 0.1);
+        }
+
+        .result-item.warning {
+            border-left-color: var(--warning-color);
+            background-color: rgba(255, 193, 7, 0.1);
+        }
+
+        .result-item.danger {
+            border-left-color: var(--danger-color);
+            background-color: rgba(199, 32, 38, 0.1);
+        }
+
+        .result-item.info {
+            border-left-color: var(--info-border);
+            background-color: var(--info-color);
+        }
+
+        .result-title {
+            font-weight: 600;
+            font-size: 18px;
+            margin-bottom: 15px;
+        }
+
+        .result-description {
+            margin-bottom: 15px;
+            font-size: 16px;
+        }
+
+        .result-solution {
+            background-color: rgba(53, 66, 110, 0.1);
+            border: 1px solid var(--primary-color);
+            border-radius: 6px;
+            padding: 15px;
+            margin: 15px 0;
+        }
+
+        .result-solution-title {
+            font-weight: 600;
+            color: var(--primary-color);
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+        }
+
+        .result-solution-title:before {
+            content: "🔧";
+            margin-right: 8px;
+        }
+
+        .solution-steps {
+            list-style: none;
+            padding: 0;
+        }
+
+        .solution-steps li {
+            padding: 5px 0;
+            padding-left: 20px;
+            position: relative;
+        }
+
+        .solution-steps li:before {
+            content: "→";
+            position: absolute;
+            left: 0;
+            color: var(--primary-color);
+            font-weight: bold;
+        }
+
+        .solution-steps li.sub-step {
+            padding-left: 40px;
+            margin-left: 20px;
+        }
+
+        .solution-steps li.sub-step:before {
+            content: "•";
+            color: var(--text-color);
+            font-weight: normal;
+            left: 20px;
+        }
+
+        .result-details {
+            background-color: var(--bg-color);
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            padding: 15px;
+            margin-top: 15px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            max-height: 300px;
+            overflow-y: auto;
+            overflow-x: hidden;
+            white-space: pre-line;
+            scrollbar-width: thin;
+            scrollbar-color: var(--primary-color) var(--border-color);
+        }
+
+        .result-details::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .result-details::-webkit-scrollbar-track {
+            background: var(--border-color);
+            border-radius: 4px;
+        }
+
+        .result-details::-webkit-scrollbar-thumb {
+            background: var(--primary-color);
+            border-radius: 4px;
+        }
+
+        .result-details::-webkit-scrollbar-thumb:hover {
+            background: #2a3759;
+        }
+
+        .details-header {
+            font-weight: bold;
+            font-size: 16px;
+            margin-top: 15px;
+            margin-bottom: 8px;
+            color: var(--primary-color);
+        }
+
+        .details-header:first-child {
+            margin-top: 0;
+        }
+
+        .assignment-group {
+            margin-bottom: 12px;
+            padding-left: 15px;
+        }
+
+        .assignment-name {
+            font-weight: bold;
+            color: var(--danger-color);
+            margin-bottom: 4px;
+        }
+
+        .student-list {
+            margin-left: 10px;
+            color: var(--text-color);
+        }
+
+        .next-steps-section {
+            background-color: var(--primary-color);
+            color: white;
+            border-radius: 8px;
+            padding: 25px;
+            margin-top: 30px;
+        }
+
+        .next-steps-title {
+            font-size: 22px;
+            font-weight: 600;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+        }
+
+        .next-steps-title:before {
+            content: "🎯";
+            margin-right: 10px;
+        }
+
+        .next-steps-content {
+            font-size: 16px;
+            line-height: 1.6;
+        }
+
+        .next-steps-content ol {
+            margin-left: 20px;
+            margin-top: 10px;
+        }
+
+        .next-steps-content li {
+            margin-bottom: 8px;
+        }
+
+        .next-steps-content a {
+            color: #87ceeb;
+            text-decoration: underline;
+        }
+
+        .next-steps-content a:hover {
+            color: white;
+        }
+
+        .footer {
+            text-align: center;
+            margin-top: 50px;
+            padding: 20px;
+            border-top: 1px solid var(--border-color);
+            color: #666;
+            font-size: 14px;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 20px;
+        }
+
+        .spinner {
+            border: 4px solid var(--border-color);
+            border-top: 4px solid var(--primary-color);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .file-info {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 15px;
+            margin-top: 15px;
+        }
+
+        .summary-box {
+            background-color: var(--primary-color);
+            color: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 30px;
+        }
+
+        .summary-box.critical {
+            background-color: var(--danger-color);
+        }
+
+        .summary-box.success {
+            background-color: var(--success-color);
+        }
+
+        .summary-title {
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+        }
+
+        .summary-title:before {
+            content: "📊";
+            margin-right: 10px;
+        }
+
+        .security-warning {
+            background-color: rgba(199, 32, 38, 0.1);
+            border: 1px solid var(--danger-color);
+            border-radius: 6px;
+            padding: 15px;
+            margin-top: 15px;
+        }
+
+        .export-steps {
+            margin-bottom: 15px;
+        }
+
+        .export-steps ol {
+            margin-left: 20px;
+        }
+
+        .export-steps li {
+            margin-bottom: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1 data-i18n="title">VinUniversity Canvas Gradebook Checker</h1>
+            <div class="header-controls">
+                <div class="language-toggle">
+                    <span class="lang-flag active" id="langEn" onclick="setLanguage('en')">🇬🇧</span>
+                    <span class="lang-flag" id="langVi" onclick="setLanguage('vi')">🇻🇳</span>
+                </div>
+                <div class="theme-toggle">
+                    <span>🌙</span>
+                    <div class="toggle-switch" id="themeToggle">
+                        <div class="toggle-slider"></div>
+                    </div>
+                    <span>☀️</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="info-section">
+            <h2 data-i18n="how-to-export">How to Export Your Canvas Gradebook</h2>
+            <div class="export-steps">
+                <ol data-i18n-list="export-steps">
+                    <li data-i18n="export-step1">Go to your Canvas course and click on "Grades" in the left navigation</li>
+                    <li data-i18n="export-step2">Click the "Export" button in the top-right corner of the gradebook</li>
+                    <li data-i18n="export-step3">Select "Export Entire Gradebook"</li>
+                    <li data-i18n="export-step4">Find the downloaded CSV file in your Downloads folder</li>
+                </ol>
+                <div class="security-warning">
+                    <strong>⚠️ <span data-i18n="security-warning">Important Security Note:</span></strong>
+                    <span data-i18n="security-warning-text">This is a local HTML app and no data is sent over the internet. However, the CSV grade export file contains sensitive student data. Please delete it from your computer after using this tool.</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="info-section">
+            <h2 data-i18n="common-issues">Common Gradebook Issues This Tool Checks</h2>
+            <ul class="info-list">
+                <li><strong data-i18n="score-discrepancies">Score Discrepancies:</strong> <span data-i18n="score-discrepancies-desc">Differences between Current vs Final scores and Posted vs Unposted scores that could affect student transcripts</span></li>
+                <li><strong data-i18n="missing-grades">Missing Grades:</strong> <span data-i18n="missing-grades-desc">Blank cells in assignments where other students have scores entered</span></li>
+                <li><strong data-i18n="unposted-assignments">Unposted Assignments:</strong> <span data-i18n="unposted-assignments-desc">Assignments that have been graded but not released to students (Manual Posting)</span></li>
+                <li><strong data-i18n="grading-scheme">Grading Scheme Issues:</strong> <span data-i18n="grading-scheme-desc">Missing letter grades that could indicate grading scheme problems</span></li>
+            </ul>
+        </div>
+
+        <div class="upload-section" id="uploadSection">
+            <h3 data-i18n="upload-title">Upload Your Canvas Gradebook CSV</h3>
+            <p data-i18n="upload-desc">Drag and drop your CSV file here, or click to browse</p>
+            <input type="file" id="fileInput" class="file-input" accept=".csv" />
+            <button class="upload-button" onclick="document.getElementById('fileInput').click()" data-i18n="choose-file">
+                Choose File
+            </button>
+            <div id="fileInfo"></div>
+        </div>
+
+        <div style="text-align: center;">
+            <button class="check-button" id="checkButton" disabled onclick="analyzeGradebook()" data-i18n="check-issues">
+                Check for Issues
+            </button>
+        </div>
+
+        <div id="loading" class="loading" style="display: none;">
+            <div class="spinner"></div>
+            <p data-i18n="analyzing">Analyzing gradebook...</p>
+        </div>
+
+        <div id="results" class="results-section"></div>
+
+        <div id="nextSteps" style="display: none;"></div>
+
+        <div class="footer">
+            VinUniversity - Center for Educational Excellence<br>
+            Created by Daniel Ruelle. Version 0.4 - May 24, 2025<br>
+            teaching.learning@vinuni.edu.vn
+        </div>
+    </div>
+
+    <script>
+        let csvData = null;
+        let fileName = '';
+        let currentLanguage = 'en';
+        let lastAnalysisResults = null;
+
+        // Translation data
+        const translations = {
+            en: {
+                'title': 'VinUniversity Canvas Gradebook Checker',
+                'how-to-export': 'How to Export Your Canvas Gradebook',
+                'export-step1': 'Go to your Canvas course and click on "Grades" in the left navigation',
+                'export-step2': 'Click the "Export" button in the top-right corner of the gradebook',
+                'export-step3': 'Select "Export Entire Gradebook"',
+                'export-step4': 'Find the downloaded CSV file in your Downloads folder',
+                'security-warning': 'Important Security Note:',
+                'security-warning-text': 'This is a local HTML app and no data is sent over the internet. However, the CSV grade export file contains sensitive student data. Please delete it from your computer after using this tool.',
+                'common-issues': 'Common Gradebook Issues This Tool Checks',
+                'score-discrepancies': 'Score Discrepancies:',
+                'score-discrepancies-desc': 'Differences between Current vs Final scores and Posted vs Unposted scores that could affect student transcripts',
+                'missing-grades': 'Missing Grades:',
+                'missing-grades-desc': 'Blank cells in assignments where other students have scores entered',
+                'unposted-assignments': 'Unposted Assignments:',
+                'unposted-assignments-desc': 'Assignments that have been graded but not released to students (Manual Posting)',
+                'assignment-config-desc': 'Assignments with missing or zero point values that may be unintentional',
+                'grading-scheme': 'Grading Scheme Issues:',
+                'grading-scheme-desc': 'Missing letter grades that could indicate grading scheme problems',
+                'upload-title': 'Upload Your Canvas Gradebook CSV',
+                'upload-desc': 'Drag and drop your CSV file here, or click to browse',
+                'choose-file': 'Choose File',
+                'check-issues': 'Check for Issues',
+                'analyzing': 'Analyzing gradebook...',
+                'file-label': 'File:',
+                'students-label': 'Students:',
+                'assignments-label': 'Assignments:',
+                'analysis-summary': 'Analysis Summary',
+                'detailed-results': 'Detailed Results',
+                'score-consistency-passed': '✅ Score Consistency Check - PASSED',
+                'score-consistency-passed-desc': 'Great! All students have matching Current and Final scores/grades. This means the grades that will appear on transcripts are correct.',
+                'score-discrepancies-found': '🚨 Score Discrepancies Found - ISSUES WITH COURSE GRADES',
+                'unposted-grades-detected': '⚠️ Unposted Grades Detected',
+                'missing-grades-passed': '✅ Missing Grades Check - PASSED',
+                'missing-grades-passed-desc': 'Excellent! No missing grades found where other students have scores. All students have been graded consistently.',
+                'missing-grades-found': '🚨 Missing Grades Found - ACTION REQUIRED',
+                'missing-grades-found-desc': 'Found {count} assignments with missing grades affecting {missingCount} student-assignment combinations. Missing grades can skew overall course averages and may indicate incomplete grading.',
+                'missing-grades-info': '📋 Ungraded Assignments Detected - Please Review',
+                'missing-grades-info-desc': 'Found {count} assignments that appear to be ungraded. Since your Score Consistency and Letter Grades checks passed, these assignments do not seem to affect students\' final grades. Please verify these are intentionally ungraded.',
+                'letter-grades-passed': '✅ Letter Grades Check - PASSED',
+                'letter-grades-passed-desc': 'Perfect! All students have letter grades assigned. Your grading scheme is working correctly.',
+                'no-letter-grades': '🚨 No Letter Grade Columns Found - SETUP REQUIRED',
+                'students-without-grades': '⚠️ Students Without Letter Grades',
+                'assignment-config-passed': '✅ Assignment Configuration - PASSED',
+                'assignment-config-passed-desc': 'Great! All assignments have proper point values and appropriate posting settings.',
+                'assignment-config-issues': '⚠️ Assignment Configuration Issues',
+                'affected-assignments': 'Affected Assignments',
+                'how-to-fix-discrepancies': 'How to Fix Score Discrepancies',
+                'how-to-post-grades': 'How to Post Grades to Students',
+                'how-to-fix-missing': 'How to Fix Missing Grades',
+                'how-to-enable-grades': 'How to Enable Letter Grades',
+                'how-to-fix-letter-grades': 'How to Fix Letter Grade Issues',
+                'summary-critical': 'Found',
+                'summary-critical-issues': 'critical issue',
+                'summary-critical-issues-plural': 'critical issues',
+                'summary-need-attention': 'that need immediate attention.',
+                'summary-warnings': 'Found',
+                'summary-warning-issues': 'warning',
+                'summary-warnings-plural': 'warnings',
+                'summary-should-review': 'that should be reviewed.',
+                'summary-checks': 'check',
+                'summary-checks-plural': 'checks',
+                'summary-passed': 'passed successfully.',
+                'score-discrepancies-found-desc': 'Found {count} students with different Current vs Final scores/grades. This is critical because the Final Score/Final Grade appears on student transcripts. Students see the Current Score in Canvas but their actual score will be different on SIS if the Current and Final columns are not identical.',
+                'unposted-grades-detected-desc': 'Found {count} students with differences between posted and unposted scores. This usually means some assignments have been graded but not yet released to students.',
+                'fix-discrepancy-step1': 'Review the analysis results below to understand the root causes of these discrepancies',
+                'fix-discrepancy-step2': 'Check the "Missing Grades" and "Unposted Grades" sections below for specific solutions',
+                'fix-discrepancy-step3': 'Address each identified issue according to the detailed recommendations provided',
+                'post-grades-step1': 'Go to your Canvas Gradebook',
+                'post-grades-step2': 'Highlight which assignments are unposted by pressing the "Apply Filters" button then "Submissions" then tick "Has Unposted Grades"',
+                'post-grades-step3': 'Look for assignments with an "eye with a slash" icon in the header',
+                'post-grades-step4': 'Click the three dots in the assignment header → "Post Grades" → "Everyone" to unmute those grades so students can see them',
+                'missing-grades-step1': 'In Canvas Gradebook, click "Apply Filters" then "Submissions" then "Has Ungraded Submissions"',
+                'missing-grades-step2': 'Focus on the assignments listed above',
+                'missing-grades-step3': 'For each missing grade, choose one of these options:',
+                'missing-grades-step4': '<li class="sub-step">Enter the actual score if work was submitted but not graded</li>',
+                'missing-grades-step5': '<li class="sub-step">Enter "0" if student did not submit and no makeup is allowed</li>',
+                'missing-grades-step6': '<li class="sub-step">Enter "EX" to excuse the student from this assignment</li>',
+                'missing-grades-step7': 'Be consistent with your grading policy across all students',
+                'missing-grades-step8': 'Review your gradebook settings for how missing work should be handled',
+                'students-without-grades-desc': 'Found {count} students without letter grades. This might indicate a grading scheme issue or students with no scored assignments.',
+                'fix-letter-grades-step1': 'First, check if your grading scheme is enabled. Go to Canvas → Settings → tick "Enable course grading scheme". Ensure you select the correct grading scheme for your course. Consider using decimals for automatic rounding.',
+                'fix-letter-grades-step2': 'Go to Canvas Gradebook and check the final letter grades are correct based on these students\' total scores.',
+                'fix-letter-grades-step3': 'If they have scores but no letter grades, contact Teaching and Learning Excellence for support.',
+                'no-letter-grades-desc': 'Cannot find letter grade columns in your gradebook. This usually means your course grading scheme is not properly configured.',
+                'enable-grading-scheme-step1': 'Go to your Canvas course',
+                'enable-grading-scheme-step2': 'Click on "Settings" in the left navigation',
+                'enable-grading-scheme-step3': 'Scroll down to "Course Details"',
+                'enable-grading-scheme-step4': 'Check the box for "Enable course grading scheme"',
+                'enable-grading-scheme-step5': 'Select the appropriate grading scheme (e.g., "Default Canvas Grading Scheme")',
+                'enable-grading-scheme-step6': 'Click "Update Course Details"',
+                'assignment-config-issues-desc': 'Found assignments with missing or problematic point values that may be unintentional and could affect grade calculations',
+                'assignment-config-step1': 'Go to your Canvas course and click on "Assignments" in the left navigation',
+                'assignment-config-step2': 'Review each assignment listed above and check the "Points" field',
+                'assignment-config-step3': 'For assignments with missing points, click "Edit" and enter the correct point value',
+                'assignment-config-step4': 'For zero-point assignments, verify this is intentional (e.g., practice activities, discussions)',
+                'assignment-config-step5': 'Save changes and republish assignments if needed',
+                'assignment-config-step6': 'Return to gradebook to verify point values are now showing correctly',
+                'how-to-fix-config': 'How to Fix Assignment Point Values',
+                'next-steps-title': 'Next Steps',
+                'next-steps-no-issues': 'Congratulations! 🎉 Your gradebook has no critical issues. All score consistency and letter grade checks have passed.',
+                'next-steps-no-issues-instructions': 'Please follow these steps to complete your grade submission:',
+                'next-steps-download-template': 'Download the Gradebook Sheet Template (VinUni_Gradebook Sheet_Template_vF.xlsx) from the Registrar SharePoint site',
+                'next-steps-update-headers': 'Update your assessment task column headers (including % weighting) then in your Canvas Gradebook export .csv file (that you uploaded to this tool), copy and paste the student info, "Final" columns (not "Current" or "Unposted") of assessment group scores, and final letter grades to the Gradebook Sheet.',
+                'next-steps-submit': 'Print, sign, ask your Program Director to sign, and submit a hard copy to the Registrar and email copy to Registrar@vinuni.edu.vn.',
+                'next-steps-video': 'See the detailed process in this video tutorial.',
+                'next-steps-issues-found': 'Issues Found - Action Required',
+                'next-steps-fix-issues': 'You need to fix the following issues before submitting your grades:',
+                'next-steps-fix-instructions': 'After fixing these issues:',
+                'next-steps-reexport': 'Export a new Canvas Gradebook .csv file',
+                'next-steps-reupload': 'Upload it to this tool again to verify all issues are resolved',
+                'next-steps-then-submit': 'Once all checks pass, follow the grade submission steps above',
+                'next-steps-score-discrepancies-summary': 'Score Discrepancies: Review students with different Current vs Final scores/grades. Check for unposted assignments and missing grades that may be causing these differences.',
+                'next-steps-missing-grades-summary': 'Missing Grades: Enter actual scores for submitted work, enter "0" for non-submissions, or "EX" to excuse students from specific assignments.',
+                'next-steps-letter-grades-summary': 'Letter Grade Issues: Enable your course grading scheme in Canvas Settings and verify all students have letter grades assigned.',
+                'next-steps-unposted-grades-summary': 'Unposted Grades: Post grades to students by clicking the three dots in assignment headers → "Post Grades" → "Everyone".',
+                'next-steps-assignment-config-summary': 'Assignment Configuration: Review and fix missing or problematic point values for assignments in your Canvas course.'
+            },
+            vi: {
+                'title': 'VinUniversity Công Cụ Kiểm Tra Bảng Điểm Canvas',
+                'how-to-export': 'Cách Xuất Bảng Điểm Canvas Của Bạn',
+                'export-step1': 'Vào khóa học Canvas của bạn và nhấp vào "Grades" trong thanh điều hướng bên trái',
+                'export-step2': 'Nhấp nút "Export" ở góc trên bên phải của bảng điểm',
+                'export-step3': 'Chọn "Export Entire Gradebook"',
+                'export-step4': 'Tìm file CSV đã tải về trong thư mục Downloads của bạn',
+                'security-warning': 'Lưu Ý Bảo Mật Quan Trọng:',
+                'security-warning-text': 'Đây là ứng dụng HTML cục bộ và không có dữ liệu nào được gửi qua internet. Tuy nhiên, file CSV xuất điểm chứa dữ liệu nhạy cảm của sinh viên. Vui lòng xóa nó khỏi máy tính sau khi sử dụng công cụ này.',
+                'common-issues': 'Các Vấn Đề Phổ Biến Mà Công Cụ Này Kiểm Tra',
+                'score-discrepancies': 'Sự Khác Biệt Điểm Số:',
+                'score-discrepancies-desc': 'Sự khác biệt giữa Current Score vs Final Score và Posted vs Unposted scores có thể ảnh hưởng đến bảng điểm sinh viên',
+                'missing-grades': 'Điểm Bị Thiếu:',
+                'missing-grades-desc': 'Ô trống trong bài tập mà sinh viên khác đã có điểm',
+                'unposted-assignments': 'Bài Tập Chưa Đăng:',
+                'unposted-assignments-desc': 'Bài tập đã được chấm nhưng chưa được công bố cho sinh viên (Manual Posting)',
+                'assignment-config': 'Cấu Hình Bài Tập:',
+                'assignment-config-desc': 'Bài tập có giá trị điểm bị thiếu hoặc bằng không có thể không có chủ ý',
+                'grading-scheme': 'Vấn Đề Hệ Thống Chấm Điểm:',
+                'grading-scheme-desc': 'Thiếu điểm chữ có thể cho thấy vấn đề về hệ thống chấm điểm',
+                'upload-title': 'Tải Lên File CSV Bảng Điểm Canvas',
+                'upload-desc': 'Kéo thả file CSV vào đây, hoặc nhấp để duyệt',
+                'choose-file': 'Chọn File',
+                'check-issues': 'Kiểm Tra Vấn Đề',
+                'analyzing': 'Đang phân tích bảng điểm...',
+                'file-label': 'File:',
+                'students-label': 'Sinh viên:',
+                'assignments-label': 'Bài tập:',
+                'analysis-summary': 'Tóm Tắt Phân Tích',
+                'detailed-results': 'Kết Quả Chi Tiết',
+                'score-consistency-passed': '✅ Kiểm Tra Tính Nhất Quán Điểm - ĐẠT',
+                'score-consistency-passed-desc': 'Tuyệt vời! Tất cả sinh viên đều có Current Score và Final Score khớp nhau. Điều này có nghĩa là điểm sẽ xuất hiện trên bảng điểm là chính xác.',
+                'score-discrepancies-found': '🚨 Phát Hiện Sự Khác Biệt Điểm - VẤN ĐỀ VỚI ĐIỂM KHÓA HỌC',
+                'unposted-grades-detected': '⚠️ Phát Hiện Điểm Chưa Đăng',
+                'missing-grades-passed': '✅ Kiểm Tra Điểm Thiếu - ĐẠT',
+                'missing-grades-passed-desc': 'Xuất sắc! Không tìm thấy điểm thiếu nào khi sinh viên khác có điểm. Tất cả sinh viên đã được chấm điểm nhất quán.',
+                'missing-grades-found': '🚨 Phát Hiện Điểm Thiếu - CẦN HÀNH ĐỘNG',
+                'missing-grades-found-desc': 'Tìm thấy {count} bài tập có điểm thiếu ảnh hưởng đến {missingCount} tổ hợp sinh viên-bài tập. Điểm thiếu có thể làm lệch điểm trung bình tổng thể khóa học và có thể cho thấy việc chấm điểm chưa hoàn tất.',
+                'missing-grades-info': '📋 Phát Hiện Bài Tập Không Chấm Điểm - Vui Lòng Xem Xét',
+                'missing-grades-info-desc': 'Tìm thấy {count} bài tập có vẻ không được chấm điểm. Vì kiểm tra Tính Nhất Quán Điểm và Điểm Chữ của bạn đã đạt, những bài tập này có vẻ không ảnh hưởng đến điểm cuối cùng của sinh viên. Vui lòng xác minh những bài này có chủ ý không chấm điểm.',
+                'letter-grades-passed': '✅ Kiểm Tra Điểm Chữ - ĐẠT',
+                'letter-grades-passed-desc': 'Hoàn hảo! Tất cả sinh viên đều có điểm chữ được gán. Hệ thống chấm điểm của bạn đang hoạt động chính xác.',
+                'no-letter-grades': '🚨 Không Tìm Thấy Cột Điểm Chữ - CẦN THIẾT LẬP',
+                'students-without-grades': '⚠️ Sinh Viên Không Có Điểm Chữ',
+                'assignment-config-passed': '✅ Cấu Hình Bài Tập - ĐẠT',
+                'assignment-config-passed-desc': 'Tuyệt vời! Tất cả bài tập đều có giá trị điểm phù hợp và cài đặt đăng thích hợp.',
+                'assignment-config-issues': '⚠️ Vấn Đề Cấu Hình Bài Tập',
+                'affected-assignments': 'Bài Tập Bị Ảnh Hưởng',
+                'how-to-fix-discrepancies': 'Cách Khắc Phục Sự Khác Biệt Điểm',
+                'how-to-post-grades': 'Cách Đăng Điểm Cho Sinh Viên',
+                'how-to-fix-missing': 'Cách Khắc Phục Điểm Thiếu',
+                'how-to-enable-grades': 'Cách Kích Hoạt Điểm Chữ',
+                'how-to-fix-letter-grades': 'Các Vấn Đề Có Thể Xảy Ra Với Hệ Thống Chấm Điểm',
+                'how-to-fix-config': 'Cách Khắc Phục Giá Trị Điểm Bài Tập',
+                'summary-critical': 'Tìm thấy',
+                'summary-critical-issues': 'vấn đề quan trọng',
+                'summary-critical-issues-plural': 'vấn đề quan trọng',
+                'summary-need-attention': 'cần được chú ý ngay lập tức.',
+                'summary-warnings': 'Found',
+                'summary-warning-issues': 'cảnh báo',
+                'summary-warnings-plural': 'cảnh báo',
+                'summary-should-review': 'nên được xem xét.',
+                'summary-checks': 'kiểm tra',
+                'summary-checks-plural': 'kiểm tra',
+                'summary-passed': 'đã đạt thành công.',
+                'score-discrepancies-found-desc': 'Tìm thấy {count} sinh viên có Current vs Final scores/grades khác nhau. Điều này quan trọng vì Final Score/Final Grade xuất hiện trên bảng điểm sinh viên. Sinh viên thấy Current Score trong Canvas nhưng điểm thực tế của họ sẽ khác trên SIS nếu cột Current và Final không giống nhau.',
+                'unposted-grades-detected-desc': 'Tìm thấy {count} sinh viên có sự khác biệt giữa điểm đã đăng và chưa đăng. Điều này thường có nghĩa là một số bài tập đã được chấm nhưng chưa được công bố cho sinh viên.',
+                'fix-discrepancy-step1': 'Xem lại kết quả phân tích bên dưới để hiểu nguyên nhân gốc rễ của những sự khác biệt này',
+                'fix-discrepancy-step2': 'Kiểm tra các mục "Missing Grades" và "Unposted Grades" bên dưới để có giải pháp cụ thể',
+                'fix-discrepancy-step3': 'Giải quyết từng vấn đề đã xác định theo các khuyến nghị chi tiết được cung cấp',
+                'post-grades-step1': 'Vào Bảng điểm Canvas của bạn',
+                'post-grades-step2': 'Làm nổi bật các bài tập chưa đăng bằng cách nhấn nút "Apply Filters" rồi "Submissions" rồi tích "Has Unposted Grades"',
+                'post-grades-step3': 'Tìm các bài tập có biểu tượng "mắt có gạch chéo" trong tiêu đề',
+                'post-grades-step4': 'Click vào ba chấm trong tiêu đề bài tập → "Post Grades" → "Everyone" để bỏ ẩn những điểm đó để sinh viên có thể thấy',
+                'missing-grades-step1': 'Trong Bảng điểm Canvas, nhấp vào nút "Apply Filters" rồi "Submissions" rồi "Has Ungraded Submissions"',
+                'missing-grades-step2': 'Tập trung vào các bài tập được liệt kê ở trên',
+                'missing-grades-step3': 'Với mỗi điểm thiếu, chọn một trong các tùy chọn sau:',
+                'missing-grades-step4': '<li class="sub-step">Nhập điểm thực tế nếu bài đã nộp nhưng chưa chấm</li>',
+                'missing-grades-step5': '<li class="sub-step">Nhập "0" nếu sinh viên không nộp và không được làm bù</li>',
+                'missing-grades-step6': '<li class="sub-step">Nhập "EX" để miễn cho sinh viên khỏi bài tập này</li>',
+                'missing-grades-step7': 'Nhất quán với chính sách chấm điểm cho tất cả sinh viên',
+                'missing-grades-step8': 'Xem lại cài đặt bảng điểm về cách xử lý bài thiếu',
+                'students-without-grades-desc': 'Tìm thấy {count} sinh viên không có điểm chữ. Điều này có thể cho thấy vấn đề hệ thống chấm điểm hoặc sinh viên không có bài tập nào được chấm điểm.',
+                'fix-letter-grades-step1': 'Đầu tiên, kiểm tra xem hệ thống chấm điểm đã được bật chưa. Vào Canvas → Settings → tick "Enable course grading scheme". Đảm bảo bạn chọn đúng hệ thống chấm điểm cho khóa học. Nên sử dụng số thập phân để làm tròn tự động.',
+                'fix-letter-grades-step2': 'Vào Canvas Gradebook và kiểm tra điểm chữ cuối cùng dựa trên tổng điểm của các sinh viên này.',
+                'fix-letter-grades-step3': 'Nếu họ có điểm số nhưng không có điểm chữ, liên hệ Teaching and Learning Excellence để được hỗ trợ.',
+                'no-letter-grades-desc': 'Không thể tìm thấy cột điểm chữ trong bảng điểm của bạn. Điều này thường có nghĩa là hệ thống chấm điểm khóa học chưa được cấu hình đúng cách.',
+                'enable-grading-scheme-step1': 'Vào khóa học Canvas của bạn',
+                'enable-grading-scheme-step2': 'Nhấp vào "Settings" trong thanh điều hướng bên trái',
+                'enable-grading-scheme-step3': 'Cuộn xuống "Course Details"',
+                'enable-grading-scheme-step4': 'Tích vào ô "Enable course grading scheme"',
+                'enable-grading-scheme-step5': 'Chọn hệ thống chấm điểm phù hợp (ví dụ: "Default Canvas Grading Scheme")',
+                'enable-grading-scheme-step6': 'Nhấp "Update Course Details"',
+                'assignment-config-issues-desc': 'Tìm thấy các bài tập có giá trị điểm bị thiếu hoặc có vấn đề, có thể không có chủ ý và có thể ảnh hưởng đến tính toán điểm',
+                'assignment-config-step1': 'Vào khóa học Canvas và nhấp vào "Assignments" trong thanh điều hướng bên trái',
+                'assignment-config-step2': 'Xem lại từng bài tập được liệt kê ở trên và kiểm tra trường "Points"',
+                'assignment-config-step3': 'Đối với các bài tập thiếu điểm, nhấp "Edit" và nhập giá trị điểm chính xác',
+                'assignment-config-step4': 'Đối với bài tập không có điểm, xác minh điều này là có chủ ý (ví dụ: hoạt động thực hành, thảo luận)',
+                'assignment-config-step5': 'Lưu thay đổi và xuất bản lại bài tập nếu cần',
+                'assignment-config-step6': 'Quay lại bảng điểm để xác minh giá trị điểm hiện đang hiển thị chính xác',
+                'next-steps-title': 'Các Bước Tiếp Theo',
+                'next-steps-no-issues': 'Chúc mừng! 🎉 Bảng điểm của bạn không có vấn đề quan trọng nào. Tất cả kiểm tra tính nhất quán điểm và điểm chữ đã đạt.',
+                'next-steps-no-issues-instructions': 'Vui lòng làm theo các bước sau để hoàn thành việc nộp điểm:',
+                'next-steps-download-template': 'Tải về Gradebook Sheet Template (VinUni_Gradebook Sheet_Template_vF.xlsx) từ trang SharePoint của Registrar',
+                'next-steps-update-headers': 'Cập nhật tiêu đề cột nhiệm vụ đánh giá (bao gồm % trọng số) sau đó trong file .csv Canvas Gradebook export (mà bạn đã tải lên công cụ này), sao chép và dán thông tin sinh viên, cột "Final" (không phải "Current" hoặc "Unposted") của điểm nhóm đánh giá, và điểm chữ cuối cùng vào Gradebook Sheet.',
+                'next-steps-submit': 'In, ký, yêu cầu Giám đốc Chương trình ký, và nộp bản cứng cho Registrar và email bản sao cho Registrar@vinuni.edu.vn.',
+                'next-steps-video': 'Xem quy trình chi tiết trong video hướng dẫn này.',
+                'next-steps-issues-found': 'Phát Hiện Vấn Đề - Cần Hành Động',
+                'next-steps-fix-issues': 'Bạn cần khắc phục các vấn đề sau trước khi nộp điểm:',
+                'next-steps-fix-instructions': 'Sau khi khắc phục các vấn đề này:',
+                'next-steps-reexport': 'Xuất file .csv Canvas Gradebook mới',
+                'next-steps-reupload': 'Tải lên công cụ này lần nữa để xác minh tất cả vấn đề đã được giải quyết',
+                'next-steps-then-submit': 'Khi tất cả kiểm tra đều đạt, làm theo các bước nộp điểm ở trên',
+                'next-steps-score-discrepancies-summary': 'Sự Khác Biệt Điểm: Xem lại sinh viên có Current vs Final scores/grades khác nhau. Kiểm tra bài tập chưa đăng và điểm thiếu có thể gây ra những khác biệt này.',
+                'next-steps-missing-grades-summary': 'Điểm Thiếu: Nhập điểm thực tế cho bài đã nộp, nhập "0" cho bài không nộp, hoặc "EX" để miễn sinh viên khỏi bài tập cụ thể.',
+                'next-steps-letter-grades-summary': 'Vấn Đề Điểm Chữ: Kích hoạt hệ thống chấm điểm khóa học trong Canvas Settings và xác minh tất cả sinh viên đều có điểm chữ được gán.',
+                'next-steps-unposted-grades-summary': 'Điểm Chưa Đăng: Đăng điểm cho sinh viên bằng cách nhấp ba chấm trong tiêu đề bài tập → "Post Grades" → "Everyone".',
+                'next-steps-assignment-config-summary': 'Cấu Hình Bài Tập: Xem lại và khắc phục giá trị điểm bị thiếu hoặc có vấn đề cho các bài tập trong khóa học Canvas của bạn.'
+            }
+        };
+
+        // Language toggle functionality
+        function setLanguage(lang) {
+            currentLanguage = lang;
+            document.getElementById('langEn').classList.toggle('active', lang === 'en');
+            document.getElementById('langVi').classList.toggle('active', lang === 'vi');
+            updateTexts();
+            
+            if (csvData) {
+                displayFileInfo();
+            }
+            
+            if (lastAnalysisResults) {
+                displayResults(lastAnalysisResults);
+                displayNextSteps(lastAnalysisResults);
+            }
+        }
+
+        function updateTexts() {
+            document.querySelectorAll('[data-i18n]').forEach(element => {
+                const key = element.getAttribute('data-i18n');
+                if (translations[currentLanguage][key]) {
+                    element.textContent = translations[currentLanguage][key];
+                }
+            });
+        }
+
+        // Theme toggle functionality
+        const themeToggle = document.getElementById('themeToggle');
+        const body = document.body;
+
+        themeToggle.addEventListener('click', () => {
+            const isDark = body.getAttribute('data-theme') === 'dark';
+            body.setAttribute('data-theme', isDark ? 'light' : 'dark');
+            themeToggle.classList.toggle('active', !isDark);
+        });
+
+        // File upload functionality
+        const fileInput = document.getElementById('fileInput');
+        const uploadSection = document.getElementById('uploadSection');
+        const checkButton = document.getElementById('checkButton');
+        const fileInfo = document.getElementById('fileInfo');
+
+        // Drag and drop
+        uploadSection.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadSection.classList.add('dragover');
+        });
+
+        uploadSection.addEventListener('dragleave', () => {
+            uploadSection.classList.remove('dragover');
+        });
+
+        uploadSection.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadSection.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleFile(files[0]);
+            }
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleFile(e.target.files[0]);
+            }
+        });
+
+        function handleFile(file) {
+            if (!file.name.toLowerCase().endsWith('.csv')) {
+                alert('Please upload a CSV file.');
+                return;
+            }
+
+            fileName = file.name;
+            
+            Papa.parse(file, {
+                complete: function(results) {
+                    csvData = results.data;
+                    displayFileInfo();
+                    checkButton.disabled = false;
+                },
+                error: function(error) {
+                    alert('Error parsing CSV file: ' + error.message);
+                }
+            });
+        }
+
+        function displayFileInfo() {
+            // Count real students (excluding test accounts and empty rows)
+            const studentRows = csvData.slice(3);
+            const realStudents = studentRows.filter(row => {
+                const studentName = (row[0] || '').toLowerCase();
+                // Filter out empty rows first
+                if (!studentName.trim()) {
+                    return false;
+                }
+                // Filter out test accounts
+                const normalizedName = studentName.replace(/[,\s]+/g, ' ').trim();
+                return !normalizedName.startsWith('test ') && 
+                       !normalizedName.includes(' test') && 
+                       !normalizedName.includes('test student') &&
+                       !normalizedName.includes('student test') &&
+                       !normalizedName.includes('tlec student') &&
+                       !normalizedName.includes('student tlec') &&
+                       !normalizedName.includes('tlec instructor') &&
+                       !normalizedName.includes('instructor tlec') &&
+                       !normalizedName.includes('sample');
+            });
+            
+            // Count unique assignments (headers with digits in parentheses)
+            const headers = csvData[0];
+            const assignmentCount = headers.filter(header => 
+                header && header.match(/\(\d+\)$/)
+            ).length;
+            
+            const studentCount = realStudents.length;
+            const fileLabel = translations[currentLanguage]['file-label'];
+            const studentsLabel = translations[currentLanguage]['students-label'];
+            const assignmentsLabel = translations[currentLanguage]['assignments-label'];
+            
+            fileInfo.innerHTML = `
+                <div class="file-info">
+                    <strong>${fileLabel}</strong> ${fileName}<br>
+                    <strong>${studentsLabel}</strong> ${studentCount}<br>
+                    <strong>${assignmentsLabel}</strong> ${assignmentCount}
+                </div>
+            `;
+        }
+
+        function analyzeGradebook() {
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('results').innerHTML = '';
+            document.getElementById('nextSteps').style.display = 'none';
+            
+            setTimeout(() => {
+                try {
+                    const results = performAnalysis();
+                    lastAnalysisResults = results;
+                    displayResults(results);
+                    displayNextSteps(results);
+                } catch (error) {
+                    console.error('Analysis error:', error);
+                    displayError('An error occurred during analysis: ' + error.message);
+                }
+                document.getElementById('loading').style.display = 'none';
+            }, 100);
+        }
+
+        function performAnalysis() {
+            const results = [];
+            
+            if (!csvData || csvData.length < 4) {
+                throw new Error('Invalid CSV format. Expected at least 4 rows (headers, manual posting, points possible, and student data).');
+            }
+
+            const headers = csvData[0];
+            const manualPosting = csvData[1];
+            const pointsPossible = csvData[2];
+            const studentRows = csvData.slice(3);
+
+            // Filter out test students and empty rows
+            const realStudents = studentRows.filter(row => {
+                const studentName = (row[0] || '').toLowerCase();
+                // Filter out empty rows first
+                if (!studentName.trim()) {
+                    return false;
+                }
+                // Filter out test accounts
+                const normalizedName = studentName.replace(/[,\s]+/g, ' ').trim();
+                return !normalizedName.startsWith('test ') && 
+                       !normalizedName.includes(' test') && 
+                       !normalizedName.includes('test student') &&
+                       !normalizedName.includes('student test') &&
+                       !normalizedName.includes('tlec student') &&
+                       !normalizedName.includes('student tlec') &&
+                       !normalizedName.includes('tlec instructor') &&
+                       !normalizedName.includes('instructor tlec') &&
+                       !normalizedName.includes('sample');
+            });
+
+            // 1. Check for score discrepancies
+            results.push(...checkScoreDiscrepancies(headers, realStudents));
+
+            // 2. Check for letter grades (moved before missing grades)
+            results.push(...checkMissingLetterGrades(headers, realStudents));
+
+            // 3. Check for missing grades (moved to end and modified logic)
+            results.push(...checkMissingGrades(headers, pointsPossible, realStudents, results));
+
+            // 4. Check for assignment configuration issues
+            results.push(...checkAssignmentConfiguration(headers, pointsPossible, manualPosting));
+
+            return results;
+        }
+
+        function checkScoreDiscrepancies(headers, students) {
+            const results = [];
+            const scoreColumns = {
+                currentScore: headers.indexOf('Current Score'),
+                finalScore: headers.indexOf('Final Score'),
+                unpostedCurrentScore: headers.indexOf('Unposted Current Score'),
+                unpostedFinalScore: headers.indexOf('Unposted Final Score'),
+                currentGrade: headers.indexOf('Current Grade'),
+                finalGrade: headers.indexOf('Final Grade'),
+                unpostedCurrentGrade: headers.indexOf('Unposted Current Grade'),
+                unpostedFinalGrade: headers.indexOf('Unposted Final Grade')
+            };
+            const discrepancies = [];
+            const postedUnpostedIssues = [];
+            const studentsWithIssues = new Map();
+            
+            students.forEach((student, index) => {
+                const studentName = student[0];
+                // Check Current vs Final Score
+                if (scoreColumns.currentScore >= 0 && scoreColumns.finalScore >= 0) {
+                    const currentScore = parseFloat(student[scoreColumns.currentScore]) || 0;
+                    const finalScore = parseFloat(student[scoreColumns.finalScore]) || 0;
+                    if (Math.abs(currentScore - finalScore) > 0.01) {
+                        if (!studentsWithIssues.has(studentName)) studentsWithIssues.set(studentName, []);
+                        studentsWithIssues.get(studentName).push(`Current Score (${currentScore}) ≠ Final Score (${finalScore})`);
+                    }
+                }
+                // Check Current vs Final Grade
+                if (scoreColumns.currentGrade >= 0 && scoreColumns.finalGrade >= 0) {
+                    const currentGrade = student[scoreColumns.currentGrade] || '';
+                    const finalGrade = student[scoreColumns.finalGrade] || '';
+                    if (currentGrade !== finalGrade) {
+                        if (!studentsWithIssues.has(studentName)) studentsWithIssues.set(studentName, []);
+                        studentsWithIssues.get(studentName).push(`Current Grade (${currentGrade}) ≠ Final Grade (${finalGrade})`);
+                    }
+                }
+                // Check Posted vs Unposted differences
+                if (scoreColumns.currentScore >= 0 && scoreColumns.unpostedCurrentScore >= 0) {
+                    const postedScore = parseFloat(student[scoreColumns.currentScore]) || 0;
+                    const unpostedScore = parseFloat(student[scoreColumns.unpostedCurrentScore]) || 0;
+                    if (Math.abs(postedScore - unpostedScore) > 0.01) {
+                        postedUnpostedIssues.push(`${studentName}: Posted Current (${postedScore}) ≠ Unposted Current (${unpostedScore})`);
+                    }
+                }
+            });
+            
+            // Prepare discrepancies list
+            studentsWithIssues.forEach((issues, studentName) => {
+                discrepancies.push(`${studentName}: ${issues.join('; ')}`);
+            });
+            
+            if (studentsWithIssues.size === 0) {
+                results.push({
+                    type: 'success',
+                    titleKey: 'score-consistency-passed',
+                    descriptionKey: 'score-consistency-passed-desc',
+                    details: null,
+                    solution: null
+                });
+            } else {
+                results.push({
+                    type: 'danger',
+                    titleKey: 'score-discrepancies-found',
+                    descriptionKey: 'score-discrepancies-found-desc',
+                    descriptionVars: { count: studentsWithIssues.size },
+                    details: discrepancies.join('\n'),
+                    solution: {
+                        titleKey: 'how-to-fix-discrepancies',
+                        stepsKeys: ['fix-discrepancy-step1', 'fix-discrepancy-step2', 'fix-discrepancy-step3']
+                    }
+                });
+            }
+            
+            if (postedUnpostedIssues.length > 0) {
+                results.push({
+                    type: 'warning',
+                    titleKey: 'unposted-grades-detected',
+                    descriptionKey: 'unposted-grades-detected-desc',
+                    descriptionVars: { count: postedUnpostedIssues.length },
+                    details: postedUnpostedIssues.join('\n'),
+                    solution: {
+                        titleKey: 'how-to-post-grades',
+                        stepsKeys: ['post-grades-step1', 'post-grades-step2', 'post-grades-step3', 'post-grades-step4']
+                    }
+                });
+            }
+            
+            return results;
+        }
+
+        function checkMissingLetterGrades(headers, students) {
+            const results = [];
+            const gradeColumns = ['Current Grade', 'Unposted Current Grade', 'Final Grade', 'Unposted Final Grade'];
+            const cleanHeaders = headers.map(h => (h || '').trim());
+            const gradeColumnIndices = gradeColumns.map(col => cleanHeaders.indexOf(col)).filter(idx => idx >= 0);
+            
+            if (gradeColumnIndices.length === 0) {
+                results.push({
+                    type: 'danger',
+                    titleKey: 'no-letter-grades',
+                    descriptionKey: 'no-letter-grades-desc',
+                    details: 'Expected columns: Current Grade, Final Grade, Unposted Current Grade, Unposted Final Grade',
+                    solution: {
+                        titleKey: 'how-to-enable-grades',
+                        stepsKeys: ['enable-grading-scheme-step1', 'enable-grading-scheme-step2', 'enable-grading-scheme-step3', 'enable-grading-scheme-step4', 'enable-grading-scheme-step5', 'enable-grading-scheme-step6']
+                    }
+                });
+                return results;
+            }
+            
+            const studentsWithoutGrades = [];
+            students.forEach((student, index) => {
+                const studentName = student[0];
+                const hasAnyGrade = gradeColumnIndices.some(idx => {
+                    const grade = student[idx];
+                    return grade && grade.trim() !== '';
+                });
+                
+                if (!hasAnyGrade) {
+                    studentsWithoutGrades.push(studentName);
+                }
+            });
+            
+            if (studentsWithoutGrades.length === 0) {
+                results.push({
+                    type: 'success',
+                    titleKey: 'letter-grades-passed',
+                    descriptionKey: 'letter-grades-passed-desc',
+                    details: null,
+                    solution: null
+                });
+            } else {
+                results.push({
+                    type: 'warning',
+                    titleKey: 'students-without-grades',
+                    descriptionKey: 'students-without-grades-desc',
+                    descriptionVars: { count: studentsWithoutGrades.length },
+                    details: studentsWithoutGrades.join('\n'),
+                    solution: {
+                        titleKey: 'how-to-fix-letter-grades',
+                        stepsKeys: ['fix-letter-grades-step1', 'fix-letter-grades-step2', 'fix-letter-grades-step3']
+                    }
+                });
+            }
+            
+            return results;
+        }
+
+        function checkMissingGrades(headers, pointsPossible, students, previousResults) {
+            const results = [];
+            const assignmentColumns = [];
+
+            // Find assignment columns (those with numbers in parentheses)
+            headers.forEach((header, index) => {
+                if (header && header.match(/\(\d+\)$/)) {
+                    const cleanName = header.replace(/\s*\(\d+\)$/, '');
+                    const points = parseFloat(pointsPossible[index]);
+                    if (points > 0) {
+                        assignmentColumns.push({
+                            index: index,
+                            name: cleanName,
+                            points: points
+                        });
+                    }
+                }
+            });
+
+            // Group missing grades by assignment
+            const missingByAssignment = new Map();
+            const affectedAssignments = new Set();
+
+            students.forEach(student => {
+                if (!student || student.length === 0 || !student[0]) return;
+                const studentName = student[0];
+                assignmentColumns.forEach(assignment => {
+                    const grade = student[assignment.index];
+                    if (!grade || grade.trim() === '' || grade.toLowerCase() === 'n/a') {
+                        const otherStudentsHaveGrades = students.some(otherStudent => {
+                            const otherGrade = otherStudent[assignment.index];
+                            return otherGrade && otherGrade.trim() !== '' && otherGrade.toLowerCase() !== 'n/a';
+                        });
+
+                        if (otherStudentsHaveGrades) {
+                            if (!missingByAssignment.has(assignment.name)) {
+                                missingByAssignment.set(assignment.name, []);
+                            }
+                            missingByAssignment.get(assignment.name).push(studentName);
+                            affectedAssignments.add(assignment.name);
+                        }
+                    }
+                });
+            });
+
+            // Check if score consistency and letter grades passed
+            const scoreConsistencyPassed = previousResults.some(r => r.titleKey === 'score-consistency-passed');
+            const letterGradesPassed = previousResults.some(r => r.titleKey === 'letter-grades-passed');
+            const bothCriticalChecksPassed = scoreConsistencyPassed && letterGradesPassed;
+
+            if (affectedAssignments.size === 0) {
+                results.push({
+                    type: 'success',
+                    titleKey: 'missing-grades-passed',
+                    descriptionKey: 'missing-grades-passed-desc',
+                    details: null,
+                    solution: null
+                });
+            } else {
+                // Format details by assignment
+                let detailsText = '';
+                
+                if (bothCriticalChecksPassed) {
+                    // Show as info - likely ungraded assignments
+                    detailsText = `<div class="details-header">Ungraded Assignments:</div>`;
+                    Array.from(affectedAssignments).forEach(assignment => {
+                        detailsText += `<div class="assignment-group">`;
+                        detailsText += `<div class="assignment-name">${assignment}</div>`;
+                        detailsText += `</div>`;
+                    });
+                    
+                    results.push({
+                        type: 'info',
+                        titleKey: 'missing-grades-info',
+                        descriptionKey: 'missing-grades-info-desc',
+                        descriptionVars: { count: affectedAssignments.size },
+                        details: detailsText,
+                        solution: null
+                    });
+                } else {
+                    // Show as danger - actual missing grades
+                    detailsText = `<div class="details-header">Affected Assignments:</div>`;
+                    Array.from(affectedAssignments).forEach(assignment => {
+                        detailsText += `<div class="assignment-group">`;
+                        detailsText += `<div class="assignment-name">${assignment}</div>`;
+                        detailsText += `<div class="student-list">${missingByAssignment.get(assignment).join(', ')}</div>`;
+                        detailsText += `</div>`;
+                    });
+                    
+                    const totalMissing = Array.from(missingByAssignment.values()).reduce((sum, students) => sum + students.length, 0);
+                    
+                    results.push({
+                        type: 'danger',
+                        titleKey: 'missing-grades-found',
+                        descriptionKey: 'missing-grades-found-desc',
+                        descriptionVars: { count: affectedAssignments.size, missingCount: totalMissing },
+                        details: detailsText,
+                        solution: {
+                            titleKey: 'how-to-fix-missing',
+                            stepsKeys: [
+                                'missing-grades-step1',
+                                'missing-grades-step2',
+                                'missing-grades-step3',
+                                'missing-grades-step4',
+                                'missing-grades-step5',
+                                'missing-grades-step6',
+                                'missing-grades-step7',
+                                'missing-grades-step8'
+                            ]
+                        }
+                    });
+                }
+            }
+
+            return results;
+        }
+
+        function checkAssignmentConfiguration(headers, pointsPossible, manualPosting) {
+            const results = [];
+            const configIssues = [];
+            
+            headers.forEach((header, index) => {
+                if (header && header.match(/\(\d+\)$/)) {
+                    const points = pointsPossible[index];
+                    const cleanName = header.replace(/\s*\(\d+\)$/, '');
+                    if (!points || points.trim() === '') {
+                        configIssues.push(`${cleanName}: Missing "Points Possible" value`);
+                    }
+                }
+            });
+            
+            if (configIssues.length > 0) {
+                results.push({
+                    type: 'warning',
+                    titleKey: 'assignment-config-issues',
+                    descriptionKey: 'assignment-config-issues-desc',
+                    details: configIssues.join('\n'),
+                    solution: {
+                        titleKey: 'how-to-fix-config',
+                        stepsKeys: ['assignment-config-step1', 'assignment-config-step2', 'assignment-config-step3', 'assignment-config-step4', 'assignment-config-step5', 'assignment-config-step6']
+                    }
+                });
+            }
+            
+            return results;
+        }
+
+        function displayResults(results) {
+            const resultsDiv = document.getElementById('results');
+            
+            if (results.length === 0) {
+                resultsDiv.innerHTML = '<p>No issues found in the analysis.</p>';
+                return;
+            }
+
+            // Create summary
+            const issueCount = results.filter(r => r.type === 'danger').length;
+            const warningCount = results.filter(r => r.type === 'warning').length;
+            const successCount = results.filter(r => r.type === 'success').length;
+            
+            // Determine summary box color
+            let summaryClass = '';
+            if (issueCount > 0) {
+                summaryClass = 'critical';
+            } else if (issueCount === 0 && warningCount === 0) {
+                summaryClass = 'success';
+            }
+            
+            let summaryText = '';
+            if (issueCount > 0) {
+                const criticalText = translations[currentLanguage]['summary-critical'];
+                const issuesText = issueCount === 1 ? translations[currentLanguage]['summary-critical-issues'] : translations[currentLanguage]['summary-critical-issues-plural'];
+                const needAttentionText = translations[currentLanguage]['summary-need-attention'];
+                summaryText = `${criticalText} ${issueCount} ${issuesText} ${needAttentionText} `;
+            }
+            if (warningCount > 0) {
+                const warningsText = translations[currentLanguage]['summary-warnings'];
+                const warningIssuesText = warningCount === 1 ? translations[currentLanguage]['summary-warning-issues'] : translations[currentLanguage]['summary-warnings-plural'];
+                const shouldReviewText = translations[currentLanguage]['summary-should-review'];
+                summaryText += `${warningsText} ${warningCount} ${warningIssuesText} ${shouldReviewText} `;
+            }
+            if (successCount > 0) {
+                const checksText = successCount === 1 ? translations[currentLanguage]['summary-checks'] : translations[currentLanguage]['summary-checks-plural'];
+                const passedText = translations[currentLanguage]['summary-passed'];
+                summaryText += `${successCount} ${checksText} ${passedText}`;
+            }
+
+            let html = `
+                <div class="summary-box ${summaryClass}">
+                    <div class="summary-title">${translations[currentLanguage]['analysis-summary']}</div>
+                    <div class="summary-content">${summaryText}</div>
+                </div>
+                <h2>${translations[currentLanguage]['detailed-results']}</h2>
+            `;
+            
+            results.forEach(result => {
+                const title = translations[currentLanguage][result.titleKey] || result.titleKey;
+                let description = translations[currentLanguage][result.descriptionKey] || result.descriptionKey;
+                
+                if (result.descriptionVars) {
+                    Object.keys(result.descriptionVars).forEach(key => {
+                        description = description.replace(`{${key}}`, result.descriptionVars[key]);
+                    });
+                }
+                
+                html += `
+                    <div class="result-item ${result.type}">
+                        <div class="result-title">${title}</div>
+                        <div class="result-description">${description}</div>
+                        ${result.solution ? `
+                            <div class="result-solution">
+                                <div class="result-solution-title">${translations[currentLanguage][result.solution.titleKey]}</div>
+                                <ul class="solution-steps">
+                                    ${result.solution.stepsKeys.map(key => {
+                                        const stepText = translations[currentLanguage][key];
+                                        if (stepText.startsWith('<li class="sub-step">')) {
+                                            return stepText;
+                                        } else {
+                                            return `<li>${stepText}</li>`;
+                                        }
+                                    }).join('')}
+                                </ul>
+                            </div>
+                        ` : ''}
+                        ${result.details ? `<div class="result-details">${result.details.replace('Affected Assignments:', translations[currentLanguage]['affected-assignments'] + ':')}</div>` : ''}
+                    </div>
+                `;
+            });
+
+            resultsDiv.innerHTML = html;
+        }
+
+        function displayNextSteps(results) {
+            const nextStepsDiv = document.getElementById('nextSteps');
+            const issueCount = results.filter(r => r.type === 'danger').length;
+            const warningCount = results.filter(r => r.type === 'warning').length;
+            
+            let html = `<div class="next-steps-section">`;
+            html += `<div class="next-steps-title">${translations[currentLanguage]['next-steps-title']}</div>`;
+            html += `<div class="next-steps-content">`;
+            
+            if (issueCount === 0) {
+                // No critical issues
+                html += `<p><strong>${translations[currentLanguage]['next-steps-no-issues']}</strong></p>`;
+                html += `<p>${translations[currentLanguage]['next-steps-no-issues-instructions']}</p>`;
+                html += `<ol>`;
+                html += `<li><a href="https://vinuniversity.sharepoint.com/:x:/s/FacultyInformationPortal/ETZEas3blYlNsGkxj1-2xkwBOchfocCwyo-YScBCvnkiBw?e=2DM3UA" target="_blank">${translations[currentLanguage]['next-steps-download-template']}</a></li>`;
+                html += `<li>${translations[currentLanguage]['next-steps-update-headers']}</li>`;
+                html += `<li>${translations[currentLanguage]['next-steps-submit']}</li>`;
+                html += `<li><a href="https://www.loom.com/share/ec0f7b08c22d4200b0f3a822e75299b9?sid=2c0b8ee0-7759-47ac-aa96-a146aa5493ae" target="_blank">${translations[currentLanguage]['next-steps-video']}</a></li>`;
+                html += `</ol>`;
+            } else {
+                // Issues found
+                html += `<p><strong>${translations[currentLanguage]['next-steps-issues-found']}</strong></p>`;
+                html += `<p>${translations[currentLanguage]['next-steps-fix-issues']}</p>`;
+                html += `<ul>`;
+                
+                results.filter(r => r.type === 'danger').forEach(result => {
+                    const title = translations[currentLanguage][result.titleKey] || result.titleKey;
+                    let summary = '';
+                    
+                    // Add detailed summary based on issue type
+                    if (result.titleKey === 'score-discrepancies-found') {
+                        summary = translations[currentLanguage]['next-steps-score-discrepancies-summary'];
+                    } else if (result.titleKey === 'missing-grades-found') {
+                        summary = translations[currentLanguage]['next-steps-missing-grades-summary'];
+                    } else if (result.titleKey === 'students-without-grades' || result.titleKey === 'no-letter-grades') {
+                        summary = translations[currentLanguage]['next-steps-letter-grades-summary'];
+                    } else if (result.titleKey === 'unposted-grades-detected') {
+                        summary = translations[currentLanguage]['next-steps-unposted-grades-summary'];
+                    } else if (result.titleKey === 'assignment-config-issues') {
+                        summary = translations[currentLanguage]['next-steps-assignment-config-summary'];
+                    }
+                    
+                    html += `<li><strong>${title}</strong><br>${summary}</li>`;
+                });
+                
+                // Also check for warning-level letter grade issues
+                results.filter(r => r.type === 'warning' && (r.titleKey === 'students-without-grades' || r.titleKey === 'no-letter-grades')).forEach(result => {
+                    const title = translations[currentLanguage][result.titleKey] || result.titleKey;
+                    const summary = translations[currentLanguage]['next-steps-letter-grades-summary'];
+                    html += `<li><strong>${title}</strong><br>${summary}</li>`;
+                });
+                
+                html += `</ul>`;
+                html += `<p><strong>${translations[currentLanguage]['next-steps-fix-instructions']}</strong></p>`;
+                html += `<ol>`;
+                html += `<li>${translations[currentLanguage]['next-steps-reexport']}</li>`;
+                html += `<li>${translations[currentLanguage]['next-steps-reupload']}</li>`;
+                html += `<li>${translations[currentLanguage]['next-steps-then-submit']}</li>`;
+                html += `</ol>`;
+            }
+            
+            html += `</div></div>`;
+            
+            nextStepsDiv.innerHTML = html;
+            nextStepsDiv.style.display = 'block';
+        }
+
+        function displayError(message) {
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = `
+                <div class="result-item danger">
+                    <div class="result-title">Analysis Error</div>
+                    <div class="result-description">${message}</div>
+                </div>
+            `;
+        }
+    </script>
+</body>
+</html> 
